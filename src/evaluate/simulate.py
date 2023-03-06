@@ -8,23 +8,31 @@ from sksurv.metrics import (
 )
 
 
-def generate_marker(n_samples, hazard_ratio, baseline_hazard, rnd):
-    """
-    Generate markers for simulation study
-    :param n_samples: number of samples
-    :param hazard_ratio: hazard ratio
-    :param baseline_hazard: baseline hazard
-    :param rnd: random number
-    :return: simulated data
-    """
-    X = rnd.randn(n_samples)
-    hazard_ratio = np.array([hazard_ratio])
-    logits = np.dot(X, np.log(hazard_ratio))
+class SimulateSurvival:
+    def __init__(self, n_sample, hazard_ratio, baseline_hazard, rnd):
+        self.n_sample = n_sample
+        self.hazard_ratio = hazard_ratio
+        self.baseline_hazard = baseline_hazard
+        self.rnd = rnd
 
-    u = rnd.uniform(size=n_samples)
-    time_event = -np.log(u) / (baseline_hazard * np.exp(logits))
+    def _generate_marker(self):
+        """
+        Generate markers for simulation study
+        :return: simulated data
+        """
+        X = self.rnd.randn(self.n_samples)
+        hazard_ratio = np.array([self.hazard_ratio])
+        logits = np.dot(X, np.log(hazard_ratio))
 
-    X = np.squeeze(X)
-    actual = concordance_index_censored(np.ones(n_samples, dtype=bool), time_event, X)
-    return X, time_event, actual[0]
+        u = self.rnd.uniform(size=self.n_samples)
+        time_event = -np.log(u) / (self.baseline_hazard * np.exp(logits))
+
+        X = np.squeeze(X)
+        actual = concordance_index_censored(np.ones(self.n_samples, dtype=bool), time_event, X)
+        return X, time_event, actual[0]
+
+
+
+
+
 
