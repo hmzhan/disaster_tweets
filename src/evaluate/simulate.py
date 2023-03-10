@@ -7,6 +7,7 @@ from sksurv.metrics import (
     cumulative_dynamic_auc,
     integrated_brier_score
 )
+from sksurv.util import Surv
 
 
 class SimulateSurvival:
@@ -21,7 +22,7 @@ class SimulateSurvival:
         Generate markers for simulation study
         :return: simulated data
         """
-        X = self.rnd.randn(self.n_samples)
+        X = self.rnd.randn(self.n_samples, 1)
         hazard_ratio = np.array([self.hazard_ratio])
         logits = np.dot(X, np.log(hazard_ratio))
 
@@ -29,28 +30,33 @@ class SimulateSurvival:
         time_event = -np.log(u) / (self.baseline_hazard * np.exp(logits))
 
         X = np.squeeze(X)
-        actual = concordance_index_censored(np.ones(self.n_samples, dtype=bool), time_event, X)
+        actual = concordance_index_censored(np.ones(
+            self.n_samples, dtype=bool),
+            time_event, X
+        )
         return X, time_event, actual[0]
 
-    def get_observed_time(self, time_event, x):
+    def _get_observed_time(self, time_event, x):
         rnd_cens = np.random.RandomState(0)
         time_censor = rnd_cens.uniform(high=x, size=self.n_samples)
         event = time_event < time_censor
         time = np.where(event, time_event, time_censor)
         return event, time
 
-    def censoring_amount(self, time_event, percentage_cens, x):
-        event, _ = self.get_observed_time(time_event, x)
+    def _censoring_amount(self, time_event, percentage_cens, x):
+        event, _ = self._get_observed_time(time_event, x)
         cens = 1.0 - event.sum() / event.shape[0]
         return (cens - percentage_cens)**2
 
     def generate_survival_data(self):
         X, time_event, actual_c = self._generate_marker()
-        res = opt.minimize_scalar(censoring_amount,
-                                  method="bounded",
-                                  bounds=(0, time_event.max()))
+        res = opt.minimize_scalar(
+            self._censoring_amount,
+            method="bounded",
+            bounds=(0, time_event.max())
+        )
 
-        event, time = get_observed_time(res.x)
+        event, time = self._get_observed_time(time_event, res.x)
 
         # upper time limit such that the probability
         # of being censored is non-zero for `t > tau`
@@ -61,7 +67,7 @@ class SimulateSurvival:
         y_test = y[mask]
         return X_test, y_test, y, actual_c
 
-    def simulation(n_samples, hazard_ratio, n_repeats=100):
+    def simulation(self, n_repeats=100):
         measures = ("censoring", "Harrel's C", "Uno's C",)
         data_mean = {}
         data_std = {}
@@ -72,16 +78,19 @@ class SimulateSurvival:
         rnd = np.random.RandomState(seed=987)
         # iterate over different amount of censoring
         for cens in (.1, .25, .4, .5, .6, .7):
-            data = {"censoring": [], "Harrel's C": [], "Uno's C": [], }
+            data = {
+                "censoring": [],
+                "Harrel's C": [],
+                "Uno's C": []
+            }
 
-            # repeaditly perform simulation
             for _ in range(n_repeats):
                 # generate data
-                X_test, y_test, y_train, actual_c = generate_survival_data(
-                    n_samples, hazard_ratio,
+                X_test, y_test, y_train, actual_c = self.generate_survival_data(
                     baseline_hazard=0.1,
                     percentage_cens=cens,
-                    rnd=rnd)
+                    rnd=rnd
+                )
 
                 # estimate c-index
                 c_harrell = concordance_index_censored(y_test["event"], y_test["time"], X_test)
@@ -101,6 +110,7 @@ class SimulateSurvival:
         data_std = pd.DataFrame.from_dict(data_std)
         return data_mean, data_std
 
+    @staticmethod
     def plot_results(data_mean, data_std, **kwargs):
         index = pd.Index(data_mean["censoring"].round(3), name="mean percentage censoring")
         for df in (data_mean, data_std):
@@ -111,13 +121,3 @@ class SimulateSurvival:
         ax.set_ylabel("Actual C - Estimated C")
         ax.yaxis.grid(True)
         ax.axhline(0.0, color="gray")
-
-
-
-
-
-
-
-
-
-
