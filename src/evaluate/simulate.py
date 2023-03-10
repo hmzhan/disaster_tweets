@@ -11,11 +11,12 @@ from sksurv.util import Surv
 
 
 class SimulateSurvival:
-    def __init__(self, n_samples, hazard_ratio, baseline_hazard, rnd):
+    def __init__(self, n_samples, hazard_ratio):
         self.n_samples = n_samples
         self.hazard_ratio = hazard_ratio
-        self.baseline_hazard = baseline_hazard
-        self.rnd = rnd
+        self.baseline_hazard = 0.1
+        self.rnd = np.random.RandomState(seed=987)
+        self.time_event = None
 
     def _generate_marker(self):
         """
@@ -27,36 +28,36 @@ class SimulateSurvival:
         logits = np.dot(X, np.log(hazard_ratio))
 
         u = self.rnd.uniform(size=self.n_samples)
-        time_event = -np.log(u) / (self.baseline_hazard * np.exp(logits))
+        self.time_event = -np.log(u) / (self.baseline_hazard * np.exp(logits))
 
         X = np.squeeze(X)
         actual = concordance_index_censored(np.ones(
             self.n_samples, dtype=bool),
-            time_event, X
+            self.time_event, X
         )
-        return X, time_event, actual[0]
+        return X, actual[0]
 
-    def _get_observed_time(self, time_event, x):
+    def _get_observed_time(self, x):
         rnd_cens = np.random.RandomState(0)
         time_censor = rnd_cens.uniform(high=x, size=self.n_samples)
-        event = time_event < time_censor
-        time = np.where(event, time_event, time_censor)
+        event = self.time_event < time_censor
+        time = np.where(event, self.time_event, time_censor)
         return event, time
 
-    def _censoring_amount(self, time_event, percentage_cens, x):
-        event, _ = self._get_observed_time(time_event, x)
+    def _censoring_amount(self, percentage_cens, x):
+        event, _ = self._get_observed_time(x)
         cens = 1.0 - event.sum() / event.shape[0]
         return (cens - percentage_cens)**2
 
-    def generate_survival_data(self):
-        X, time_event, actual_c = self._generate_marker()
+    def generate_survival_data(self, percentage_cens, rnd):
+        X, actual_c = self._generate_marker()
         res = opt.minimize_scalar(
             self._censoring_amount,
             method="bounded",
-            bounds=(0, time_event.max())
+            bounds=(0, self.time_event.max())
         )
 
-        event, time = self._get_observed_time(time_event, res.x)
+        event, time = self._get_observed_time(res.x)
 
         # upper time limit such that the probability
         # of being censored is non-zero for `t > tau`
@@ -83,14 +84,9 @@ class SimulateSurvival:
                 "Harrel's C": [],
                 "Uno's C": []
             }
-
             for _ in range(n_repeats):
                 # generate data
-                X_test, y_test, y_train, actual_c = self.generate_survival_data(
-                    baseline_hazard=0.1,
-                    percentage_cens=cens,
-                    rnd=rnd
-                )
+                X_test, y_test, y_train, actual_c = self.generate_survival_data(cens, self.rnd)
 
                 # estimate c-index
                 c_harrell = concordance_index_censored(y_test["event"], y_test["time"], X_test)
