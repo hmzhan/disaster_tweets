@@ -44,15 +44,15 @@ class SimulateSurvival:
         time = np.where(event, self.time_event, time_censor)
         return event, time
 
-    def _censoring_amount(self, percentage_cens, x):
-        event, _ = self._get_observed_time(x)
-        cens = 1.0 - event.sum() / event.shape[0]
-        return (cens - percentage_cens)**2
-
     def generate_survival_data(self, percentage_cens):
+        def _censoring_amount(x):
+            event, _ = self._get_observed_time(x)
+            cens = 1.0 - event.sum() / event.shape[0]
+            return (cens - percentage_cens) ** 2
+
         X, actual_c = self._generate_marker()
         res = opt.minimize_scalar(
-            self._censoring_amount,
+            _censoring_amount,
             method="bounded",
             bounds=(0, self.time_event.max())
         )
