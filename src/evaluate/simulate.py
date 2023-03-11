@@ -49,18 +49,15 @@ class SimulateSurvival:
         cens = 1.0 - event.sum() / event.shape[0]
         return (cens - percentage_cens)**2
 
-    def generate_survival_data(self, percentage_cens, rnd):
+    def generate_survival_data(self, percentage_cens):
         X, actual_c = self._generate_marker()
         res = opt.minimize_scalar(
             self._censoring_amount,
             method="bounded",
             bounds=(0, self.time_event.max())
         )
-
         event, time = self._get_observed_time(res.x)
 
-        # upper time limit such that the probability
-        # of being censored is non-zero for `t > tau`
         tau = time[event].max()
         y = Surv.from_arrays(event=event, time=time)
         mask = time < tau
@@ -76,7 +73,6 @@ class SimulateSurvival:
             data_mean[measure] = []
             data_std[measure] = []
 
-        rnd = np.random.RandomState(seed=987)
         # iterate over different amount of censoring
         for cens in (.1, .25, .4, .5, .6, .7):
             data = {
@@ -86,7 +82,7 @@ class SimulateSurvival:
             }
             for _ in range(n_repeats):
                 # generate data
-                X_test, y_test, y_train, actual_c = self.generate_survival_data(cens, self.rnd)
+                X_test, y_test, y_train, actual_c = self.generate_survival_data(cens)
 
                 # estimate c-index
                 c_harrell = concordance_index_censored(y_test["event"], y_test["time"], X_test)
