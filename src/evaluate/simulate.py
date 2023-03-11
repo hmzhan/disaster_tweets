@@ -38,6 +38,11 @@ class SimulateSurvival:
         return X, actual[0]
 
     def _get_observed_time(self, x):
+        """
+        Get observed time
+        :param x:
+        :return: event and time
+        """
         rnd_cens = np.random.RandomState(0)
         time_censor = rnd_cens.uniform(high=x, size=self.n_samples)
         event = self.time_event < time_censor
@@ -45,6 +50,11 @@ class SimulateSurvival:
         return event, time
 
     def generate_survival_data(self, percentage_cens):
+        """
+        Generate survival data
+        :param percentage_cens:
+        :return:
+        """
         def _censoring_amount(x):
             event, _ = self._get_observed_time(x)
             cens = 1.0 - event.sum() / event.shape[0]
