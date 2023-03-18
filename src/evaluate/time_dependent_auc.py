@@ -8,17 +8,10 @@ import matplotlib.pyplot as plt
 
 class Data:
     def __init__(self):
-        self.x = None
-        self.y = None
-        self.x_train = None
-        self.x_test = None
-        self.y_train = None
-        self.y_test = None
-
-    def load_data(self):
         self.x, self.y = load_flchain()
         self.x_train, self.x_test, self.y_train, self.y_test = train_test_split(self.x, self.y,
-                                                                                test_size=0.2, random_state=0)
+                                                                                test_size=0.2,
+                                                                                random_state=0)
 
     def impute_data(self, num_columns):
         imputer = SimpleImputer().fit(self.x_train.loc[:, num_columns])
@@ -33,4 +26,3 @@ class Data:
         plt.ylabel("time-dependent auc")
         plt.axhline(mean_auc, color=color, linestyle="--")
         plt.legend()
-
