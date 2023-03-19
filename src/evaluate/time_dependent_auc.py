@@ -1,12 +1,16 @@
 import numpy as np
-from sksurv.datasets import load_flchain
+from sksurv.datasets import load_flchain, load_veterans_lung_cancer
 from sksurv.metrics import cumulative_dynamic_auc, concordance_index_ipcw
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import OneHotEncoder
+from sksurv.linear_model import CoxPHSurvivalAnalysis
+from sksurv.ensemble import RandomSurvivalForest
 import matplotlib.pyplot as plt
 
 
-class Data:
+class TimeDependentAUC:
     def __init__(self):
         self.x, self.y = load_flchain()
         self.x_train, self.x_test, self.y_train, self.y_test = train_test_split(self.x, self.y,
@@ -26,3 +30,56 @@ class Data:
         plt.ylabel("time-dependent auc")
         plt.axhline(mean_auc, color=color, linestyle="--")
         plt.legend()
+
+
+class EvaluateModel:
+    def __init__(self):
+        self.va_x, self.va_y = load_veterans_lung_cancer()
+        self.va_x_train, self.va_x_test, self.va_y_train, self.va_y_test = train_test_split(
+            self.va_x, self.va_y, test_size=0.2, stratify=self.va_y["Status"], random_state=0
+        )
+        self.va_times = np.arange(8, 184, 7)
+        self.cph = None
+        self.rsf = None
+
+    def cox_model(self):
+        self.cph = make_pipeline(OneHotEncoder(), CoxPHSurvivalAnalysis)
+        self.cph.fit(self.va_x_train, self.va_y_train)
+
+    def plot_cox_model_auc(self):
+        cph_risk_scores = self.cph.predict(self.va_x_test)
+        cph_auc, cph_mean_auc = cumulative_dynamic_auc(
+            self.va_y_train, self.va_y_test, cph_risk_scores, self.va_times
+        )
+        plt.plot(self.va_times, cph_auc, marker="o")
+        plt.axhline(cph_mean_auc, linestyle="--")
+        plt.xlabel("days from enrollment")
+        plt.ylabel("time-dependent AUC")
+        plt.grid(True)
+
+    def rsf_model(self):
+        self.rsf = make_pipeline(
+            OneHotEncoder(),
+            RandomSurvivalForest(n_estimators=100, min_samples_leaf=7, random_state=0)
+        )
+        self.rsf.fit(self.va_x_train, self.va_y_train)
+
+    def plot_model_auc(self):
+        cph_risk_scores = self.cph.predict(self.va_x_test)
+        cph_auc, cph_mean_auc = cumulative_dynamic_auc(
+            self.va_y_train, self.va_y_test, cph_risk_scores, self.va_times
+        )
+
+        rsf_chf_funcs = self.rsf.predict_cumulative_hazard_function(
+            self.va_x_test, return_array=False
+        )
+        rsf_risk_scores = np.row_stack([chf(self.va_times) for chf in rsf_chf_funcs])
+        rsf_auc, rsf_mean_auc = cumulative_dynamic_auc(
+            self.va_y_train, self.va_y_test, rsf_risk_scores, self.va_times
+        )
+        plt.plot(self.va_times, cph_auc, label="CoxPH (mean AUC = {:.3f})".format(cph_mean_auc))
+        plt.plot(self.va_times, rsf_auc, label="RSF (mean AUC = {:.3f})".format(rsf_mean_auc))
+        plt.xlabel("days from enrollment")
+        plt.ylabel("time-dependent AUC")
+        plt.legend(loc="lower center")
+        plt.grid(True)
