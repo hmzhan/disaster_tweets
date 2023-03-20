@@ -73,7 +73,7 @@ class EvaluateModel:
         self.rsf.fit(self.va_x_train, self.va_y_train)
 
     def plot_model_auc(self):
-        cph_risk_scores = self.cph.predict(self.va_x_test)
+        cph_risk_scores = self.cph.predict(self.va_x_test)  # predict_cumulative_hazard_function
         cph_auc, cph_mean_auc = cumulative_dynamic_auc(
             self.va_y_train, self.va_y_test, cph_risk_scores, self.va_times
         )
