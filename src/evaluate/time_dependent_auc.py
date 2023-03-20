@@ -1,13 +1,21 @@
 import numpy as np
-from sksurv.datasets import load_flchain, load_veterans_lung_cancer
-from sksurv.metrics import cumulative_dynamic_auc, concordance_index_ipcw
-from sklearn.model_selection import train_test_split
-from sklearn.impute import SimpleImputer
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import OneHotEncoder
-from sksurv.linear_model import CoxPHSurvivalAnalysis
-from sksurv.ensemble import RandomSurvivalForest
 import matplotlib.pyplot as plt
+
+from sklearn import set_config
+from sklearn.impute import SimpleImputer
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import make_pipeline
+
+from sksurv.datasets import load_flchain, load_gbsg2, load_veterans_lung_cancer
+from sksurv.linear_model import CoxPHSurvivalAnalysis, CoxnetSurvivalAnalysis
+from sksurv.metrics import (
+    concordance_index_censored,
+    concordance_index_ipcw,
+    cumulative_dynamic_auc,
+    integrated_brier_score,
+)
+from sksurv.ensemble import RandomSurvivalForest
+from sksurv.preprocessing import OneHotEncoder
 
 
 class TimeDependentAUC:
@@ -43,7 +51,7 @@ class EvaluateModel:
         self.rsf = None
 
     def cox_model(self):
-        self.cph = make_pipeline(OneHotEncoder(), CoxPHSurvivalAnalysis)
+        self.cph = make_pipeline(OneHotEncoder(), CoxPHSurvivalAnalysis())
         self.cph.fit(self.va_x_train, self.va_y_train)
 
     def plot_cox_model_auc(self):
