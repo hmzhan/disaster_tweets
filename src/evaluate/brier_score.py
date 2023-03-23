@@ -26,17 +26,15 @@ class Brier:
         self.gbsg_X_train, self.gbsg_X_test, self.gbsg_y_train, self.gbsg_y_test = train_test_split(
             self.gbsg_X, self.gbsg_y, stratify=self.gbsg_y["cens"], random_state=1
         )
-        self.cph_gbsg = None
-        self.rsf_gbsg = None
+        self.cph_gbsg = CoxnetSurvivalAnalysis(l1_ratio=0.99, fit_baseline_model=True)
+        self.rsf_gbsg = RandomSurvivalForest(max_depth=2, random_state=1)
         self.score_cindex = None
         self.score_brier = None
 
     def cox_model(self):
-        self.cph_gbsg = CoxnetSurvivalAnalysis(l1_ratio=0.99, fit_baseline_model=True)
         self.cph_gbsg.fit(self.gbsg_X_train, self.gbsg_y_train)
 
     def rsf_model(self):
-        self.rsf_gbsg = RandomSurvivalForest(max_depth=2, random_state=1)
         self.rsf_gbsg.fit(self.gbsg_X_train, self.gbsg_y_train)
 
     def calculate_cindex(self):

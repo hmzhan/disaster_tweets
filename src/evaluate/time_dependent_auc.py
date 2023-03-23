@@ -47,11 +47,13 @@ class EvaluateModel:
             self.va_x, self.va_y, test_size=0.2, stratify=self.va_y["Status"], random_state=0
         )
         self.va_times = np.arange(8, 184, 7)
-        self.cph = None
-        self.rsf = None
+        self.cph = make_pipeline(OneHotEncoder(), CoxPHSurvivalAnalysis())
+        self.rsf = make_pipeline(
+            OneHotEncoder(),
+            RandomSurvivalForest(n_estimators=100, min_samples_leaf=7, random_state=0)
+        )
 
     def cox_model(self):
-        self.cph = make_pipeline(OneHotEncoder(), CoxPHSurvivalAnalysis())
         self.cph.fit(self.va_x_train, self.va_y_train)
 
     def plot_cox_model_auc(self):
@@ -66,10 +68,6 @@ class EvaluateModel:
         plt.grid(True)
 
     def rsf_model(self):
-        self.rsf = make_pipeline(
-            OneHotEncoder(),
-            RandomSurvivalForest(n_estimators=100, min_samples_leaf=7, random_state=0)
-        )
         self.rsf.fit(self.va_x_train, self.va_y_train)
 
     def plot_model_auc(self):
