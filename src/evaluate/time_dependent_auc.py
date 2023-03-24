@@ -1,18 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from sklearn import set_config
 from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
 
-from sksurv.datasets import load_flchain, load_gbsg2, load_veterans_lung_cancer
-from sksurv.linear_model import CoxPHSurvivalAnalysis, CoxnetSurvivalAnalysis
+from sksurv.datasets import load_flchain, load_veterans_lung_cancer
+from sksurv.linear_model import CoxPHSurvivalAnalysis
 from sksurv.metrics import (
-    concordance_index_censored,
-    concordance_index_ipcw,
     cumulative_dynamic_auc,
-    integrated_brier_score,
+    integrated_brier_score
 )
 from sksurv.ensemble import RandomSurvivalForest
 from sksurv.preprocessing import OneHotEncoder
