@@ -56,17 +56,6 @@ class EvaluateModel:
     def cox_model(self):
         self.cph.fit(self.va_x_train, self.va_y_train)
 
-    def plot_cox_model_auc(self):
-        cph_risk_scores = self.cph.predict(self.va_x_test)
-        cph_auc, cph_mean_auc = cumulative_dynamic_auc(
-            self.va_y_train, self.va_y_test, cph_risk_scores, self.va_times
-        )
-        plt.plot(self.va_times, cph_auc, marker="o")
-        plt.axhline(cph_mean_auc, linestyle="--")
-        plt.xlabel("days from enrollment")
-        plt.ylabel("time-dependent AUC")
-        plt.grid(True)
-
     def rsf_model(self):
         self.rsf.fit(self.va_x_train, self.va_y_train)
 
